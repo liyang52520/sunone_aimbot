@@ -1,3 +1,5 @@
+import datetime
+
 import win32con, win32api
 import time
 import math
@@ -5,6 +7,7 @@ import os
 import supervision as sv
 
 from logic.config_watcher import cfg
+from logic.viGEmBus import ViGEmBus
 from logic.visual import visuals
 from logic.shooting import shooting
 from logic.buttons import Buttons
@@ -83,7 +86,7 @@ class MouseThread:
             self.visualize_prediction(target_x, target_y, target_cls)
 
         move_x, move_y = self.calc_movement(target_x, target_y, target_cls)
-        
+
         self.visualize_history(target_x, target_y)
         shooting.queue.put((self.bScope, self.get_shooting_key_state()))
         self.move_mouse(move_x, move_y)
@@ -97,7 +100,7 @@ class MouseThread:
             self.prev_velocity_x = 0
             self.prev_velocity_y = 0
             return target_x, target_y
-        
+
         # Next target?
         max_jump = max(self.screen_width, self.screen_height) * 0.3 # 30%
         if abs(target_x - self.prev_x) > max_jump or abs(target_y - self.prev_y) > max_jump:
@@ -108,10 +111,10 @@ class MouseThread:
             return target_x, target_y
 
         delta_time = current_time - self.prev_time
-        
+
         if delta_time == 0:
             delta_time = 1e-6
-    
+
         velocity_x = (target_x - self.prev_x) / delta_time
         velocity_y = (target_y - self.prev_y) / delta_time
         acceleration_x = (velocity_x - self.prev_velocity_x) / delta_time
@@ -136,18 +139,18 @@ class MouseThread:
     def calculate_speed_multiplier(self, target_x, target_y, distance):
         if any(map(math.isnan, (target_x, target_y))) or self.section_size_x == 0:
             return self.min_speed_multiplier
-    
+
         normalized_distance = min(distance / self.max_distance, 1)
         base_speed = self.min_speed_multiplier + (self.max_speed_multiplier - self.min_speed_multiplier) * (1 - normalized_distance)
-        
+
         if self.section_size_x == 0:
             return self.min_speed_multiplier
 
         target_x_section = int((target_x - self.center_x + self.screen_width / 2) / self.section_size_x)
         target_y_section = int((target_y - self.center_y + self.screen_height / 2) / self.section_size_y)
-        
+
         distance_from_center = max(abs(50 - target_x_section), abs(50 - target_y_section))
-        
+
         if distance_from_center == 0:
             return 1
         elif 5 <= distance_from_center <= 10:
@@ -159,7 +162,7 @@ class MouseThread:
         if self.prev_distance is not None:
             speed_adjustment = 1 + (abs(distance - self.prev_distance) / self.max_distance) * self.speed_correction_factor
             return speed_multiplier * speed_adjustment
-        
+
         return speed_multiplier
 
     def calc_movement(self, target_x, target_y, target_cls):
@@ -178,10 +181,10 @@ class MouseThread:
         alpha = 0.85
         if not hasattr(self, 'last_move_x'):
             self.last_move_x, self.last_move_y = 0, 0
-        
+
         move_x = alpha * mouse_move_x + (1 - alpha) * self.last_move_x
         move_y = alpha * mouse_move_y + (1 - alpha) * self.last_move_y
-        
+
         self.last_move_x, self.last_move_y = move_x, move_y
 
         move_x = (move_x / 360) * (self.dpi * (1 / self.mouse_sensitivity)) * speed_multiplier
@@ -195,19 +198,27 @@ class MouseThread:
 
         shooting_state = self.get_shooting_key_state()
 
+        logger.info(
+            f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}] Move mouse {x} {y} {cfg.viGEmBus_move}")
+
         if shooting_state or cfg.mouse_auto_aim:
-            if not cfg.mouse_ghub and not cfg.arduino_move and not cfg.mouse_rzr:
-                win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, int(x), int(y), 0, 0)
-            elif cfg.mouse_ghub:
-                self.ghub.mouse_xy(int(x), int(y))
-            elif cfg.arduino_move:
-                arduino.move(int(x), int(y))
-            elif cfg.mouse_rzr:
-                self.rzr.mouse_move(int(x), int(y), True)
+            if cfg.viGEmBus_move:
+                ViGEmBus.move(int(x), int(y), cfg.viGEmBus_move_scope, cfg.viGEmBus_move_sleep)
+            # if not cfg.mouse_ghub and not cfg.arduino_move and not cfg.mouse_rzr:
+            #     win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, int(x), int(y), 0, 0)
+            # elif cfg.mouse_ghub:
+            #     self.ghub.mouse_xy(int(x), int(y))
+            # elif cfg.arduino_move:
+            #     arduino.move(int(x), int(y))
+            # elif cfg.mouse_rzr:
+            #     self.rzr.mouse_move(int(x), int(y), True)
 
     def get_shooting_key_state(self):
         for key_name in cfg.hotkey_targeting_list:
             key_code = Buttons.KEY_CODES.get(key_name.strip())
+            print(key_name, key_code)
+            print("win32api.GetKeyState(key_code)", win32api.GetKeyState(key_code))
+            print("win32api.GetAsyncKeyState(key_code)", win32api.GetAsyncKeyState(key_code))
             if key_code and (win32api.GetKeyState(key_code) if cfg.mouse_lock_target else win32api.GetAsyncKeyState(key_code)) < 0:
                 return True
         return False
@@ -216,10 +227,10 @@ class MouseThread:
         reduced_w, reduced_h = target_w * reduction_factor / 2, target_h * reduction_factor / 2
         x1, x2, y1, y2 = target_x - reduced_w, target_x + reduced_w, target_y - reduced_h, target_y + reduced_h
         bScope = self.center_x > x1 and self.center_x < x2 and self.center_y > y1 and self.center_y < y2
-        
+
         if cfg.show_window and cfg.show_bScope_box:
             visuals.draw_bScope(x1, x2, y1, y2, bScope)
-        
+
         return bScope
 
     def update_settings(self):

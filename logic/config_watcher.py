@@ -88,6 +88,12 @@ class Config():
         self.arduino_port = str(self.config_Arduino["arduino_port"])
         self.arduino_baudrate = int(self.config_Arduino["arduino_baudrate"])
         self.arduino_16_bit_mouse = self.config_Arduino.getboolean("arduino_16_bit_mouse")
+
+        # ViGEmBus
+        self.config_ViGEmBus = self.config["ViGEmBus"]
+        self.viGEmBus_move = self.config_ViGEmBus.getboolean("viGEmBus_move")
+        self.viGEmBus_move_scope = self.config_ViGEmBus.getfloat("viGEmBus_move_scope")
+        self.viGEmBus_move_sleep = self.config_ViGEmBus.getfloat("viGEmBus_move_sleep")
         
         # AI
         self.config_AI = self.config["AI"]
