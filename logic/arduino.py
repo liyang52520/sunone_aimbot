@@ -40,13 +40,13 @@ class ArduinoMouse:
         
     def move(self, x, y):
         if self.cfg.arduino_16_bit_mouse:
-            data = f'm{x},{y}\n'.encode()
+            data = f'{x}:{y}x'.encode()
             self.serial_port.write(data)
         else:
             x_parts = self._split_value(x)
             y_parts = self._split_value(y)
             for x_part, y_part in zip(x_parts, y_parts):
-                data = f'm{x_part},{y_part}\n'.encode()
+                data = f'{x_part}:{y_part}x'.encode()
                 self.serial_port.write(data)
         
     def _split_value(self, value):

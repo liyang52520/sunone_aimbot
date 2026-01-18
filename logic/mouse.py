@@ -198,27 +198,37 @@ class MouseThread:
 
         shooting_state = self.get_shooting_key_state()
 
-        logger.info(
-            f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}] Move mouse {x} {y} {cfg.viGEmBus_move}")
+        move_type = ""
+        if cfg.viGEmBus_move:
+            move_type = "ViGEmBus"
+        elif cfg.mouse_ghub:
+            move_type = "GHUB"
+        elif cfg.arduino_move:
+            move_type = "Arduino"
+        elif cfg.mouse_rzr:
+            move_type = "Razer"
+        elif cfg.mouse_lock_target:
+            move_type = "Mouse"
+        else:
+            move_type = "None"
 
         if shooting_state or cfg.mouse_auto_aim:
+            logger.info(
+                f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}] Move {move_type} {x} {y}")
             if cfg.viGEmBus_move:
                 ViGEmBus.move(int(x), int(y), cfg.viGEmBus_move_scope, cfg.viGEmBus_move_sleep)
             # if not cfg.mouse_ghub and not cfg.arduino_move and not cfg.mouse_rzr:
             #     win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, int(x), int(y), 0, 0)
             # elif cfg.mouse_ghub:
             #     self.ghub.mouse_xy(int(x), int(y))
-            # elif cfg.arduino_move:
-            #     arduino.move(int(x), int(y))
+            elif cfg.arduino_move:
+                arduino.move(int(x), int(y))
             # elif cfg.mouse_rzr:
             #     self.rzr.mouse_move(int(x), int(y), True)
 
     def get_shooting_key_state(self):
         for key_name in cfg.hotkey_targeting_list:
             key_code = Buttons.KEY_CODES.get(key_name.strip())
-            print(key_name, key_code)
-            print("win32api.GetKeyState(key_code)", win32api.GetKeyState(key_code))
-            print("win32api.GetAsyncKeyState(key_code)", win32api.GetAsyncKeyState(key_code))
             if key_code and (win32api.GetKeyState(key_code) if cfg.mouse_lock_target else win32api.GetAsyncKeyState(key_code)) < 0:
                 return True
         return False
