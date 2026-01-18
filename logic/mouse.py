@@ -7,6 +7,7 @@ import os
 import supervision as sv
 
 from logic.config_watcher import cfg
+from logic.makcu import Makcu
 from logic.viGEmBus import ViGEmBus
 from logic.visual import visuals
 from logic.shooting import shooting
@@ -85,7 +86,7 @@ class MouseThread:
                 target_x, target_y = self.predict_target_position(target_x, target_y, current_time)
             self.visualize_prediction(target_x, target_y, target_cls)
 
-        move_x, move_y = self.calc_movement(target_x, target_y, target_cls)
+        move_x, move_y = self.calc_movement(target_x, target_y, target_w, target_h, target_cls)
 
         self.visualize_history(target_x, target_y)
         shooting.queue.put((self.bScope, self.get_shooting_key_state()))
@@ -165,7 +166,7 @@ class MouseThread:
 
         return speed_multiplier
 
-    def calc_movement(self, target_x, target_y, target_cls):
+    def calc_movement(self, target_x, target_y, target_w, target_h, target_cls):
         offset_x = target_x - self.center_x
         offset_y = target_y - self.center_y
         distance = math.sqrt(offset_x**2 + offset_y**2)
@@ -190,6 +191,10 @@ class MouseThread:
         move_x = (move_x / 360) * (self.dpi * (1 / self.mouse_sensitivity)) * speed_multiplier
         move_y = (move_y / 360) * (self.dpi * (1 / self.mouse_sensitivity)) * speed_multiplier
 
+        not_move_x = math.fabs(offset_x) < target_w * 0.2
+        not_move_y = math.fabs(offset_y) < target_h * 0.6
+        move_x = 0 if not_move_x else move_x
+        move_y = 0 if not_move_y else move_y
         return move_x, move_y
 
     def move_mouse(self, x, y):
@@ -198,7 +203,6 @@ class MouseThread:
 
         shooting_state = self.get_shooting_key_state()
 
-        move_type = ""
         if cfg.viGEmBus_move:
             move_type = "ViGEmBus"
         elif cfg.mouse_ghub:
@@ -207,6 +211,8 @@ class MouseThread:
             move_type = "Arduino"
         elif cfg.mouse_rzr:
             move_type = "Razer"
+        elif cfg.makcu_move:
+            move_type = "Makcu"
         elif cfg.mouse_lock_target:
             move_type = "Mouse"
         else:
@@ -215,7 +221,9 @@ class MouseThread:
         if shooting_state or cfg.mouse_auto_aim:
             logger.info(
                 f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}] Move {move_type} {x} {y}")
-            if cfg.viGEmBus_move:
+            if cfg.makcu_move:
+                Makcu.move(int(x), int(y))
+            elif cfg.viGEmBus_move:
                 ViGEmBus.move(int(x), int(y), cfg.viGEmBus_move_scope, cfg.viGEmBus_move_sleep)
             # if not cfg.mouse_ghub and not cfg.arduino_move and not cfg.mouse_rzr:
             #     win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, int(x), int(y), 0, 0)

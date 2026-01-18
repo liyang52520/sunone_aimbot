@@ -94,6 +94,10 @@ class Config():
         self.viGEmBus_move = self.config_ViGEmBus.getboolean("viGEmBus_move")
         self.viGEmBus_move_scope = self.config_ViGEmBus.getfloat("viGEmBus_move_scope")
         self.viGEmBus_move_sleep = self.config_ViGEmBus.getfloat("viGEmBus_move_sleep")
+
+        # Makcu
+        self.config_Makcu = self.config["Makcu"]
+        self.makcu_move = self.config_Makcu.getboolean("makcu_move")
         
         # AI
         self.config_AI = self.config["AI"]
