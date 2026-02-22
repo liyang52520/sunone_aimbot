@@ -9,7 +9,7 @@ import win32con
 from logic.buttons import Buttons
 from logic.config_watcher import cfg
 from logic.logger import logger
-from logic.makcu import Makcu
+from logic.makcu_mouse import MakcuMouse
 from logic.shooting import shooting
 from logic.visual import visuals
 
@@ -202,7 +202,7 @@ class MouseThread:
             logger.info(
                 f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}] Move {move_type} {x} {y}")
             if cfg.makcu_move:
-                Makcu.move(int(x), int(y))
+                MakcuMouse.move(int(x), int(y))
 
     def get_shooting_key_state(self):
         for key_name in cfg.hotkey_targeting_list:

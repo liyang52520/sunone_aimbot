@@ -1,7 +1,7 @@
 from makcu import create_controller
 
 
-class Makcu:
+class MakcuMouse:
     _device = None
     _scope = 20
 
@@ -15,4 +15,4 @@ class Makcu:
     def move(cls, x, y):
         x = max(-1 * cls._scope, min(x, cls._scope))
         y = max(-1 * cls._scope, min(y, cls._scope))
-        # cls.get_device().move_smooth(x, y, segments=1)
+        cls.get_device().move_smooth(x, y, segments=1)
