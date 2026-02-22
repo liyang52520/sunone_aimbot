@@ -6,6 +6,11 @@
 2. only for intel gpu (openVino)
 3. only use makcu for moving your mouse
 
+## env
+
+1. python 3.10
+2. intel gpu (driver: 32.0.101.8509)
+
 ## Start
 
 1. install base requirements

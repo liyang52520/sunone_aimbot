@@ -1,8 +1,8 @@
-pywin32
-screeninfo
-asyncio
-ultralytics
-mss
-supervision
-makcu
-openvino
+asyncio==4.0.0
+mss==10.1.0
+makcu==2.3.1
+openvino==2025.4.1
+pywin32==311
+screeninfo==0.8.1
+supervision==0.27.0.post1
+ultralytics==8.4.14
