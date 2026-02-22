@@ -1,13 +1,14 @@
-import torch
-import supervision as sv
 import numpy as np
+import supervision as sv
+import torch
 
-from logic.hotkeys_watcher import hotkeys_watcher
-from logic.config_watcher import cfg
 from logic.capture import capture
-from logic.visual import visuals
+from logic.config_watcher import cfg
+from logic.hotkeys_watcher import hotkeys_watcher
 from logic.mouse import mouse
 from logic.shooting import shooting
+from logic.visual import visuals
+
 
 class Target:
     def __init__(self, x, y, w, h, cls):
@@ -16,6 +17,7 @@ class Target:
         self.w = w
         self.h = h
         self.cls = cls
+
 
 class FrameParser:
     def __init__(self):
@@ -48,7 +50,7 @@ class FrameParser:
         if target:
             if hotkeys_watcher.clss is None:
                 hotkeys_watcher.active_classes()
-            
+
             if target.cls in hotkeys_watcher.clss:
                 mouse.process_data((target.x, target.y, target.w, target.h, target.cls))
 
@@ -56,14 +58,14 @@ class FrameParser:
         if cfg.show_window or cfg.show_overlay:
             if cfg.show_boxes or cfg.overlay_show_boxes:
                 visuals.draw_helpers(frame.boxes)
-            
+
             if cfg.show_window and cfg.show_detection_speed:
                 visuals.draw_speed(frame.speed['preprocess'], frame.speed['inference'], frame.speed['postprocess'])
-        
+
         # Handle no detections
         if not frame.boxes and (cfg.auto_shoot or cfg.triggerbot):
             shooting.shoot(False, False)
-        
+
         if cfg.show_window or cfg.show_overlay:
             if not frame.boxes:
                 visuals.clear()
@@ -74,7 +76,7 @@ class FrameParser:
         else:
             boxes_array = frame.boxes.xywh.to(self.arch)
             classes_tensor = frame.boxes.cls.to(self.arch)
-        
+
         if not classes_tensor.numel():
             return None
 
@@ -83,12 +85,12 @@ class FrameParser:
     def _convert_sv_to_tensor(self, frame):
         xyxy = frame.xyxy
         xywh = torch.tensor([
-            (xyxy[:, 0] + xyxy[:, 2]) / 2,  
-            (xyxy[:, 1] + xyxy[:, 3]) / 2,  
-            xyxy[:, 2] - xyxy[:, 0],        
-            xyxy[:, 3] - xyxy[:, 1]        
+            (xyxy[:, 0] + xyxy[:, 2]) / 2,
+            (xyxy[:, 1] + xyxy[:, 3]) / 2,
+            xyxy[:, 2] - xyxy[:, 0],
+            xyxy[:, 3] - xyxy[:, 1]
         ], dtype=torch.float32).to(self.arch).T
-        
+
         classes_tensor = torch.from_numpy(np.array(frame.class_id, dtype=np.float32)).to(self.arch)
         return xywh, classes_tensor
 
@@ -115,7 +117,7 @@ class FrameParser:
                 nearest_idx = torch.nonzero(head_mask)[nearest_idx].item()
             else:
                 nearest_idx = torch.argmin(distances_sq)
-        
+
         target_data = boxes_array[nearest_idx, :4].cpu().numpy()
         target_class = classes_tensor[nearest_idx].item()
 
@@ -128,5 +130,6 @@ class FrameParser:
             return 'cpu'
         else:
             return f'cuda:{cfg.AI_device}'
+
 
 frameParser = FrameParser()

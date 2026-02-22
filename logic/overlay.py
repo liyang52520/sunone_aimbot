@@ -1,32 +1,32 @@
-from tkinter import Canvas
-import tkinter as tk
-import tkinter.font as tkFont
-import threading
 import queue
+import threading
+import tkinter as tk
+from tkinter import Canvas
 
 from logic.config_watcher import cfg
+
 
 class Overlay:
     def __init__(self):
         self.queue = queue.Queue()
         self.thread = None
         self.square_id = None
-        
+
         # Skip frames so that the figures do not interfere with the detector ¯\_(ツ)_/¯
         self.frame_skip_counter = 0
 
     def run(self, width, height):
         if cfg.show_overlay:
             self.root = tk.Tk()
-            
+
             self.root.overrideredirect(True)
-            
+
             screen_width = self.root.winfo_screenwidth()
             screen_height = self.root.winfo_screenheight()
-            
+
             x = (screen_width - width) // 2
             y = (screen_height - height) // 2
-            
+
             self.root.geometry(f"{width}x{height}+{x}+{y}")
             self.root.attributes('-topmost', True)
             self.root.attributes('-transparentcolor', 'black')
@@ -43,7 +43,7 @@ class Overlay:
             self.root.bind("<Leave>", lambda e: "break")
             self.root.bind("<FocusIn>", lambda e: "break")
             self.root.bind("<FocusOut>", lambda e: "break")
-            
+
             self.canvas.bind("<Button-1>", lambda e: "break")
             self.canvas.bind("<Button-2>", lambda e: "break")
             self.canvas.bind("<Button-3>", lambda e: "break")
@@ -101,7 +101,7 @@ class Overlay:
         self.queue.put((self._draw_point, (x, y, color, size)))
 
     def _draw_point(self, x, y, color='white', size=1):
-        self.canvas.create_oval(x-size, y-size, x+size, y+size, fill=color, outline=color)
+        self.canvas.create_oval(x - size, y - size, x + size, y + size, fill=color, outline=color)
 
     def draw_text(self, x, y, text, size=12, color='white'):
         self.queue.put((self._draw_text, (x, y, text, size, color)))
@@ -113,5 +113,6 @@ class Overlay:
         if self.thread is None:
             self.thread = threading.Thread(target=self.run, args=(width, height), daemon=True, name="Overlay")
             self.thread.start()
+
 
 overlay = Overlay()

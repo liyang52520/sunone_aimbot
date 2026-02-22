@@ -1,29 +1,22 @@
 import datetime
-
-import win32con, win32api
-import time
 import math
-import os
+import time
+
 import supervision as sv
+import win32api
+import win32con
 
-from logic.config_watcher import cfg
-from logic.makcu import Makcu
-from logic.viGEmBus import ViGEmBus
-from logic.visual import visuals
-from logic.shooting import shooting
 from logic.buttons import Buttons
+from logic.config_watcher import cfg
 from logic.logger import logger
+from logic.makcu import Makcu
+from logic.shooting import shooting
+from logic.visual import visuals
 
-if cfg.mouse_rzr:
-    from logic.rzctl import RZCONTROL
-
-if cfg.arduino_move or cfg.arduino_shoot:
-    from logic.arduino import arduino
 
 class MouseThread:
     def __init__(self):
         self.initialize_parameters()
-        self.setup_hardware()
 
     def initialize_parameters(self):
         self.dpi = cfg.mouse_dpi
@@ -40,7 +33,7 @@ class MouseThread:
         self.prev_x = 0
         self.prev_y = 0
         self.prev_time = None
-        self.max_distance = math.sqrt(self.screen_width**2 + self.screen_height**2) / 2
+        self.max_distance = math.sqrt(self.screen_width ** 2 + self.screen_height ** 2) / 2
         self.min_speed_multiplier = cfg.mouse_min_speed_multiplier
         self.max_speed_multiplier = cfg.mouse_max_speed_multiplier
         self.prev_distance = None
@@ -57,17 +50,6 @@ class MouseThread:
             return 'cpu'
         return f'cuda:{cfg.AI_device}'
 
-    def setup_hardware(self):
-        if cfg.mouse_ghub:
-            from logic.ghub import gHub
-            self.ghub = gHub
-
-        if cfg.mouse_rzr:
-            dll_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rzctl.dll")
-            self.rzr = RZCONTROL(dll_path)
-            if not self.rzr.init():
-                logger.error("Failed to initialize rzctl")
-
     def process_data(self, data):
         if isinstance(data, sv.Detections):
             target_x, target_y = data.xyxy.mean(axis=1)
@@ -77,7 +59,8 @@ class MouseThread:
             target_x, target_y, target_w, target_h, target_cls = data
 
         self.visualize_target(target_x, target_y, target_cls)
-        self.bScope = self.check_target_in_scope(target_x, target_y, target_w, target_h, self.bScope_multiplier) if cfg.auto_shoot or cfg.triggerbot else False
+        self.bScope = self.check_target_in_scope(target_x, target_y, target_w, target_h,
+                                                 self.bScope_multiplier) if cfg.auto_shoot or cfg.triggerbot else False
         self.bScope = cfg.force_click or self.bScope
 
         if not self.disable_prediction:
@@ -103,7 +86,7 @@ class MouseThread:
             return target_x, target_y
 
         # Next target?
-        max_jump = max(self.screen_width, self.screen_height) * 0.3 # 30%
+        max_jump = max(self.screen_width, self.screen_height) * 0.3  # 30%
         if abs(target_x - self.prev_x) > max_jump or abs(target_y - self.prev_y) > max_jump:
             self.prev_x, self.prev_y = target_x, target_y
             self.prev_velocity_x = 0
@@ -122,13 +105,16 @@ class MouseThread:
         acceleration_y = (velocity_y - self.prev_velocity_y) / delta_time
 
         prediction_interval = delta_time * self.prediction_interval
-        current_distance = math.sqrt((target_x - self.prev_x)**2 + (target_y - self.prev_y)**2)
+        current_distance = math.sqrt((target_x - self.prev_x) ** 2 + (target_y - self.prev_y) ** 2)
         proximity_factor = max(0.1, min(1, 1 / (current_distance + 1)))
 
-        speed_correction = 1 + (abs(current_distance - (self.prev_distance or 0)) / self.max_distance) * self.speed_correction_factor if self.prev_distance is not None else .0001
+        speed_correction = 1 + (abs(current_distance - (
+                    self.prev_distance or 0)) / self.max_distance) * self.speed_correction_factor if self.prev_distance is not None else .0001
 
-        predicted_x = target_x + velocity_x * prediction_interval * proximity_factor * speed_correction + 0.5 * acceleration_x * (prediction_interval ** 2) * proximity_factor * speed_correction
-        predicted_y = target_y + velocity_y * prediction_interval * proximity_factor * speed_correction + 0.5 * acceleration_y * (prediction_interval ** 2) * proximity_factor * speed_correction
+        predicted_x = target_x + velocity_x * prediction_interval * proximity_factor * speed_correction + 0.5 * acceleration_x * (
+                    prediction_interval ** 2) * proximity_factor * speed_correction
+        predicted_y = target_y + velocity_y * prediction_interval * proximity_factor * speed_correction + 0.5 * acceleration_y * (
+                    prediction_interval ** 2) * proximity_factor * speed_correction
 
         self.prev_x, self.prev_y = target_x, target_y
         self.prev_velocity_x, self.prev_velocity_y = velocity_x, velocity_y
@@ -142,7 +128,8 @@ class MouseThread:
             return self.min_speed_multiplier
 
         normalized_distance = min(distance / self.max_distance, 1)
-        base_speed = self.min_speed_multiplier + (self.max_speed_multiplier - self.min_speed_multiplier) * (1 - normalized_distance)
+        base_speed = self.min_speed_multiplier + (self.max_speed_multiplier - self.min_speed_multiplier) * (
+                    1 - normalized_distance)
 
         if self.section_size_x == 0:
             return self.min_speed_multiplier
@@ -161,7 +148,8 @@ class MouseThread:
             speed_multiplier = base_speed * (1 - speed_reduction)
 
         if self.prev_distance is not None:
-            speed_adjustment = 1 + (abs(distance - self.prev_distance) / self.max_distance) * self.speed_correction_factor
+            speed_adjustment = 1 + (
+                        abs(distance - self.prev_distance) / self.max_distance) * self.speed_correction_factor
             return speed_multiplier * speed_adjustment
 
         return speed_multiplier
@@ -169,7 +157,7 @@ class MouseThread:
     def calc_movement(self, target_x, target_y, target_w, target_h, target_cls):
         offset_x = target_x - self.center_x
         offset_y = target_y - self.center_y
-        distance = math.sqrt(offset_x**2 + offset_y**2)
+        distance = math.sqrt(offset_x ** 2 + offset_y ** 2)
         speed_multiplier = self.calculate_speed_multiplier(target_x, target_y, distance)
 
         degrees_per_pixel_x = self.fov_x / self.screen_width
@@ -223,21 +211,12 @@ class MouseThread:
                 f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}] Move {move_type} {x} {y}")
             if cfg.makcu_move:
                 Makcu.move(int(x), int(y))
-            elif cfg.viGEmBus_move:
-                ViGEmBus.move(int(x), int(y), cfg.viGEmBus_move_scope, cfg.viGEmBus_move_sleep)
-            # if not cfg.mouse_ghub and not cfg.arduino_move and not cfg.mouse_rzr:
-            #     win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, int(x), int(y), 0, 0)
-            # elif cfg.mouse_ghub:
-            #     self.ghub.mouse_xy(int(x), int(y))
-            elif cfg.arduino_move:
-                arduino.move(int(x), int(y))
-            # elif cfg.mouse_rzr:
-            #     self.rzr.mouse_move(int(x), int(y), True)
 
     def get_shooting_key_state(self):
         for key_name in cfg.hotkey_targeting_list:
             key_code = Buttons.KEY_CODES.get(key_name.strip())
-            if key_code and (win32api.GetKeyState(key_code) if cfg.mouse_lock_target else win32api.GetAsyncKeyState(key_code)) < 0:
+            if key_code and (
+            win32api.GetKeyState(key_code) if cfg.mouse_lock_target else win32api.GetAsyncKeyState(key_code)) < 0:
                 return True
         return False
 
@@ -269,11 +248,13 @@ class MouseThread:
             visuals.draw_target_line(target_x, target_y, target_cls)
 
     def visualize_prediction(self, target_x, target_y, target_cls):
-        if (cfg.show_window and cfg.show_target_prediction_line) or (cfg.show_overlay and cfg.show_target_prediction_line):
+        if (cfg.show_window and cfg.show_target_prediction_line) or (
+                cfg.show_overlay and cfg.show_target_prediction_line):
             visuals.draw_predicted_position(target_x, target_y, target_cls)
 
     def visualize_history(self, target_x, target_y):
         if (cfg.show_window and cfg.show_history_points) or (cfg.show_overlay and cfg.show_history_points):
             visuals.draw_history_point_add_point(target_x, target_y)
+
 
 mouse = MouseThread()
