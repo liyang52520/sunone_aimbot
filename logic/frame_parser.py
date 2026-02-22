@@ -129,7 +129,7 @@ class FrameParser:
         elif 'cpu' in cfg.AI_device:
             return 'cpu'
         else:
-            return f'cuda:{cfg.AI_device}'
+            return f'xpu:{cfg.AI_device}'
 
 
 frameParser = FrameParser()

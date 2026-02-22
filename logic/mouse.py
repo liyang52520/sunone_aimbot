@@ -39,16 +39,8 @@ class MouseThread:
         self.prev_distance = None
         self.speed_correction_factor = 0.1
         self.bScope = False
-        self.arch = self.get_arch()
         self.section_size_x = self.screen_width / 100
         self.section_size_y = self.screen_height / 100
-
-    def get_arch(self):
-        if cfg.AI_enable_AMD:
-            return f'hip:{cfg.AI_device}'
-        if 'cpu' in cfg.AI_device:
-            return 'cpu'
-        return f'cuda:{cfg.AI_device}'
 
     def process_data(self, data):
         if isinstance(data, sv.Detections):
