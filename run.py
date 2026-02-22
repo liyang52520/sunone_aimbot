@@ -47,6 +47,7 @@ def perform_detection(model, image, tracker: sv.ByteTrack | None = None):
 def init():
     try:
         model = YOLO(f"models/{cfg.AI_model_name}", task="detect")
+        torch.xpu.init()
     except Exception as e:
         print("An error occurred when loading the AI model:\n", e)
         quit(0)
